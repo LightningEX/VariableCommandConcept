@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Minecraft Bedrock TitleRaw Concept Editor</title>
+
+<style>
+
+body{
+    background:#202124;
+    color:white;
+    font-family:Segoe UI;
+    margin:40px;
+}
+
+h1{
+    margin-bottom:25px;
+}
+
+.section{
+    margin-bottom:30px;
+}
+
+textarea{
+
+    width:100%;
+    min-height:80px;
+    resize:none;
+
+    padding:12px;
+    font-size:15px;
+
+    border:2px solid #444;
+    border-radius:6px;
+
+    background:#111;
+    color:white;
+
+    box-sizing:border-box;
+}
+
+textarea:focus{
+    outline:none;
+    border-color:#3aa0ff;
+}
+
+.buttonRow{
+
+    margin-top:10px;
+}
+
+button{
+
+    padding:8px 18px;
+    margin-right:8px;
+
+    background:#3a3a3a;
+    color:white;
+
+    border:none;
+    border-radius:5px;
+
+    cursor:pointer;
+}
+
+button:hover{
+
+    background:#555;
+}
+
+.error{
+
+    margin-top:8px;
+
+    background:#430000;
+    color:#ff8f8f;
+
+    padding:10px;
+
+    border-radius:5px;
+
+    min-height:20px;
+}
+
+.previewContainer{
+
+    display:flex;
+    align-items:flex-start;
+    gap:15px;
+}
+
+.preview{
+
+    flex:1;
+
+    background:#111;
+    border:3px solid #888;
+
+    padding:18px;
+
+    font-family:Consolas;
+    font-size:18px;
+
+    min-height:70px;
+}
+
+.refresh{
+
+    height:45px;
+}
+
+.success{
+    color:#5cff83;
+}
+
+</style>
+
+</head>
+<body>
+
+<h1>Bedrock TitleRaw Editor (Concept)</h1>
+
+<div class="section">
+
+<h2>Variables / Scoreboards</h2>
+
+<textarea
+id="commandBox"
+placeholder="/scoreboard...
+or
+/variable create string class Warrior"></textarea>
+
+<div class="buttonRow">
+<button onclick="executeCommand()">Execute</button>
+<button onclick="clearCommand()">Clear</button>
+</div>
+
+<div id="commandError" class="error"></div>
+
+</div>
+
+
+
+<div class="section">
+
+<h2>TitleRaw</h2>
+
+<textarea
+id="titleBox"
+placeholder='/titleraw @s actionbar {"rawtext":[{"text":"Hello"}]}'></textarea>
+
+<div class="buttonRow">
+<button onclick="executeTitle()">Execute</button>
+<button onclick="clearTitle()">Clear</button>
+</div>
+
+<div id="titleError" class="error"></div>
+
+</div>
+
+
+
+<div class="section">
+
+<h2>Preview</h2>
+
+<div class="previewContainer">
+
+<div id="preview" class="preview">
+(No title displayed)
+</div>
+
+<button class="refresh" onclick="refreshPreview()">
+Refresh
+</button>
+
+</div>
+
+</div>
+
+
+
+<script>
+
+let variables={};
+let scoreboards={};
+
+function autoGrow(box){
+
+    box.style.height="5px";
+    box.style.height=box.scrollHeight+"px";
+
+}
+
+// Initialize on page load
+window.addEventListener("DOMContentLoaded", () => {
+    loadFromLocalStorage();
+    
+    document.querySelectorAll("textarea").forEach(t=>{
+        autoGrow(t);
+        t.addEventListener("input",()=>autoGrow(t));
+    });
+});
+
+// Save to localStorage
+function saveToLocalStorage(){
+    localStorage.setItem("commandBox", document.getElementById("commandBox").value);
+    localStorage.setItem("titleBox", document.getElementById("titleBox").value);
+    localStorage.setItem("variables", JSON.stringify(variables));
+    localStorage.setItem("scoreboards", JSON.stringify(scoreboards));
+}
+
+// Load from localStorage
+function loadFromLocalStorage(){
+    let savedCommand = localStorage.getItem("commandBox");
+    let savedTitle = localStorage.getItem("titleBox");
+    let savedVariables = localStorage.getItem("variables");
+    let savedScoreboards = localStorage.getItem("scoreboards");
+    
+    if(savedCommand) document.getElementById("commandBox").value = savedCommand;
+    if(savedTitle) document.getElementById("titleBox").value = savedTitle;
+    if(savedVariables) variables = JSON.parse(savedVariables);
+    if(savedScoreboards) scoreboards = JSON.parse(savedScoreboards);
+}
+
+function clearCommand(){
+
+    document.getElementById("commandBox").value="";
+    document.getElementById("commandError").innerHTML="";
+    variables={};
+    scoreboards={};
+    saveToLocalStorage();
+
+}
+
+function clearTitle(){
+
+    document.getElementById("titleBox").value="";
+    document.getElementById("titleError").innerHTML="";
+    saveToLocalStorage();
+
+}
+
+
+
+function executeCommand(){
+
+    let input=document.getElementById("commandBox").value.trim();
+
+    let error=document.getElementById("commandError");
+
+    error.innerHTML="";
+
+    if(input.startsWith("/variable")){
+
+        validateVariable(input,error);
+        return;
+
+    }
+
+    if(input.startsWith("/scoreboard")){
+
+        validateScoreboard(input,error);
+        return;
+
+    }
+
+    error.innerHTML="Unknown command.";
+
+}
+
+
+
+function validateVariable(command,error){
+
+    let split=command.split(/\s+/);
+
+    if(split.length<5){
+
+        error.innerHTML="Incomplete /variable command.";
+        return;
+
+    }
+
+    let mode=split[1];
+
+    let type=split[2];
+
+    if(!["create","set","remove"].includes(mode)){
+
+        error.innerHTML="Expected create, set or remove.";
+        return;
+
+    }
+
+    if(!["number","string","boolean","null"].includes(type)){
+
+        error.innerHTML="Unknown variable type.";
+        return;
+
+    }
+
+    if(type==="string"){
+
+        if(split.length<5){
+
+            error.innerHTML="Expected variable name and string value.";
+            return;
+        }
+
+        variables[split[3]]=split.slice(4).join(" ");
+
+    }
+
+    if(type==="number"){
+
+        if(split.length<5){
+            error.innerHTML="Expected variable name and number value.";
+            return;
+        }
+
+        let varName = split[3];
+        let varValue = split[4];
+
+        if(isNaN(varValue)){
+            error.innerHTML="Variable value must be a valid number.";
+            return;
+        }
+
+        variables[varName] = parseInt(varValue);
+
+    }
+
+    if(type==="boolean"){
+
+        if(split.length<5){
+            error.innerHTML="Expected variable name and boolean value.";
+            return;
+        }
+
+        let varName = split[3];
+        let varValue = split[4].toLowerCase();
+
+        if(!["true","false"].includes(varValue)){
+            error.innerHTML="Boolean value must be true or false.";
+            return;
+        }
+
+        variables[varName] = varValue === "true";
+
+    }
+
+    error.innerHTML='<span class="success">Command valid.</span>';
+    saveToLocalStorage();
+
+}
+
+
+
+function validateScoreboard(command,error){
+
+    let split=command.split(/\s+/);
+
+    // Expected format: /scoreboard objectives/players add/remove/set <objective> <player> <value>
+    if(split.length < 4){
+
+        error.innerHTML="Incomplete scoreboard command.";
+        return;
+    }
+
+    let subcommand = split[1]; // objectives or players
+
+    if(subcommand === "objectives"){
+
+        if(split.length < 4){
+            error.innerHTML="Incomplete scoreboard objectives command.";
+            return;
+        }
+
+        let action = split[2]; // add, remove, etc.
+        let objectiveName = split[3];
+
+        if(action === "add"){
+            scoreboards[objectiveName] = {};
+            error.innerHTML='<span class="success">Objective created.</span>';
+        }
+        else if(action === "remove"){
+            delete scoreboards[objectiveName];
+            error.innerHTML='<span class="success">Objective removed.</span>';
+        }
+        else{
+            error.innerHTML="Unknown scoreboard objectives action.";
+            return;
+        }
+
+    }
+    else if(subcommand === "players"){
+
+        if(split.length < 6){
+            error.innerHTML="Incomplete scoreboard players command.";
+            return;
+        }
+
+        let action = split[2]; // add, set, remove
+        let objectiveName = split[3];
+        let player = split[4];
+        let value = split[5];
+
+        if(!scoreboards[objectiveName]){
+            error.innerHTML="Objective '" + objectiveName + "' does not exist.";
+            return;
+        }
+
+        if(isNaN(value)){
+            error.innerHTML="Score value must be a number.";
+            return;
+        }
+
+        if(action === "set"){
+            scoreboards[objectiveName][player] = parseInt(value);
+            error.innerHTML='<span class="success">Score set.</span>';
+        }
+        else if(action === "add"){
+            if(!scoreboards[objectiveName][player]){
+                scoreboards[objectiveName][player] = 0;
+            }
+            scoreboards[objectiveName][player] += parseInt(value);
+            error.innerHTML='<span class="success">Score added.</span>';
+        }
+        else if(action === "remove"){
+            delete scoreboards[objectiveName][player];
+            error.innerHTML='<span class="success">Score removed.</span>';
+        }
+        else{
+            error.innerHTML="Unknown scoreboard players action.";
+            return;
+        }
+
+    }
+    else{
+        error.innerHTML="Expected 'objectives' or 'players' subcommand.";
+        return;
+    }
+
+    saveToLocalStorage();
+
+}
+
+
+
+function executeTitle(){
+
+    let error=document.getElementById("titleError");
+
+    error.innerHTML="";
+
+    let command=document.getElementById("titleBox").value.trim();
+
+    if(!command.startsWith("/titleraw ")){
+
+        error.innerHTML="Command must begin with /titleraw";
+        return;
+    }
+
+    let firstBrace=command.indexOf("{");
+
+    if(firstBrace==-1){
+
+        error.innerHTML="Missing JSON.";
+        return;
+    }
+
+    let json=command.substring(firstBrace);
+
+    try{
+
+        JSON.parse(json);
+
+        error.innerHTML='<span class="success">Command valid.</span>';
+        saveToLocalStorage();
+
+    }
+
+    catch(e){
+
+        error.innerHTML="Invalid JSON.";
+    }
+
+}
+
+
+
+function refreshPreview(){
+
+    let commandError=document.getElementById("commandError").innerText;
+
+    let titleError=document.getElementById("titleError").innerText;
+
+    if(commandError &&
+       !commandError.includes("valid")){
+
+        document.getElementById("preview").innerText="";
+
+        return;
+    }
+
+    if(titleError &&
+       !titleError.includes("valid")){
+
+        document.getElementById("preview").innerText="";
+        return;
+    }
+
+    let cmd=document.getElementById("titleBox").value.trim();
+
+    let jsonString=cmd.substring(cmd.indexOf("{"));
+
+    try{
+
+        let json=JSON.parse(jsonString);
+
+        let output="";
+
+        json.rawtext.forEach(entry=>{
+
+            if(entry.text){
+
+                output+=entry.text;
+            }
+
+            if(entry.variable){
+
+                let varName = entry.variable.var;
+                let value = variables[varName];
+
+                if(value===undefined){
+                    output+="<Undefined>";
+                }
+                else{
+                    output+=value;
+                }
+
+            }
+
+            if(entry.score){
+
+                let objective = entry.score.name;
+                let player = entry.score.player;
+
+                if(!scoreboards[objective] || scoreboards[objective][player] === undefined){
+                    output+="<Undefined>";
+                }
+                else{
+                    output+=scoreboards[objective][player];
+                }
+
+            }
+
+        });
+
+        document.getElementById("preview").innerText=output;
+
+    }
+
+    catch{
+
+        document.getElementById("preview").innerText="";
+    }
+
+}
+
+</script>
+
+</body>
+</html>
