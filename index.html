@@ -13,6 +13,19 @@ body{
     margin:40px;
 }
 
+.versionContainer{
+    position:fixed;
+    top:10px;
+    right:10px;
+    background:#2a2a2a;
+    border:1px solid #444;
+    padding:8px 12px;
+    border-radius:4px;
+    font-size:12px;
+    color:#aaa;
+    font-family:Consolas;
+}
+
 h1{
     margin-bottom:25px;
 }
@@ -80,6 +93,10 @@ button:hover{
     border-radius:5px;
 
     min-height:20px;
+    font-family:Consolas;
+    font-size:13px;
+    white-space:pre-wrap;
+    word-wrap:break-word;
 }
 
 .previewContainer{
@@ -117,6 +134,10 @@ button:hover{
 
 </head>
 <body>
+
+<div class="versionContainer">
+    v<span id="version">1.0</span>
+</div>
 
 <h1>Bedrock TitleRaw Editor (Concept)</h1>
 
@@ -182,6 +203,7 @@ Refresh
 
 <script>
 
+const VERSION = "1.0";
 let variables={};
 let scoreboards={};
 
@@ -194,11 +216,15 @@ function autoGrow(box){
 
 // Initialize on page load
 window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("version").innerText = VERSION;
     loadFromLocalStorage();
     
     document.querySelectorAll("textarea").forEach(t=>{
         autoGrow(t);
-        t.addEventListener("input",()=>autoGrow(t));
+        t.addEventListener("input",()=>{
+            autoGrow(t);
+            saveToLocalStorage();
+        });
     });
 });
 
@@ -265,7 +291,7 @@ function executeCommand(){
 
     }
 
-    error.innerHTML="Unknown command.";
+    error.innerHTML="Unknown command. Expected /variable or /scoreboard";
 
 }
 
@@ -277,7 +303,7 @@ function validateVariable(command,error){
 
     if(split.length<5){
 
-        error.innerHTML="Incomplete /variable command.";
+        error.innerHTML="/variable [create/set/remove] [number/string/boolean/null] [name] [value]\n\nIncomplete command: missing arguments";
         return;
 
     }
@@ -286,44 +312,52 @@ function validateVariable(command,error){
 
     let type=split[2];
 
+    let varName=split[3];
+
     if(!["create","set","remove"].includes(mode)){
 
-        error.innerHTML="Expected create, set or remove.";
+        error.innerHTML="/variable [create/set/remove] [number/string/boolean/null] [name] [value]\n\nInvalid mode '" + mode + "': expected create, set, or remove";
         return;
 
     }
 
     if(!["number","string","boolean","null"].includes(type)){
 
-        error.innerHTML="Unknown variable type.";
+        error.innerHTML="/variable [create/set/remove] [number/string/boolean/null] [name] [value]\n\nInvalid type '" + type + "': expected number, string, boolean, or null";
         return;
 
+    }
+
+    if(mode === "remove"){
+        delete variables[varName];
+        error.innerHTML='<span class="success">Variable removed.</span>';
+        saveToLocalStorage();
+        return;
     }
 
     if(type==="string"){
 
         if(split.length<5){
 
-            error.innerHTML="Expected variable name and string value.";
+            error.innerHTML="/variable [create/set/remove] [string] [name] [value]\n\nMissing variable name or value";
             return;
         }
 
-        variables[split[3]]=split.slice(4).join(" ");
+        variables[varName]=split.slice(4).join(" ");
 
     }
 
-    if(type==="number"){
+    else if(type==="number"){
 
         if(split.length<5){
-            error.innerHTML="Expected variable name and number value.";
+            error.innerHTML="/variable [create/set/remove] [number] [name] [value]\n\nMissing variable name or value";
             return;
         }
 
-        let varName = split[3];
         let varValue = split[4];
 
         if(isNaN(varValue)){
-            error.innerHTML="Variable value must be a valid number.";
+            error.innerHTML="/variable [create/set/remove] [number] [name] [value]\n\nInvalid number: '" + varValue + "' is not a valid number";
             return;
         }
 
@@ -331,18 +365,17 @@ function validateVariable(command,error){
 
     }
 
-    if(type==="boolean"){
+    else if(type==="boolean"){
 
         if(split.length<5){
-            error.innerHTML="Expected variable name and boolean value.";
+            error.innerHTML="/variable [create/set/remove] [boolean] [name] [value]\n\nMissing variable name or value";
             return;
         }
 
-        let varName = split[3];
         let varValue = split[4].toLowerCase();
 
         if(!["true","false"].includes(varValue)){
-            error.innerHTML="Boolean value must be true or false.";
+            error.innerHTML="/variable [create/set/remove] [boolean] [name] [value]\n\nInvalid boolean: '" + split[4] + "' is not true or false";
             return;
         }
 
@@ -350,7 +383,7 @@ function validateVariable(command,error){
 
     }
 
-    error.innerHTML='<span class="success">Command valid.</span>';
+    error.innerHTML='<span class="success">Variable ' + mode + "ed.</span>";
     saveToLocalStorage();
 
 }
@@ -361,10 +394,9 @@ function validateScoreboard(command,error){
 
     let split=command.split(/\s+/);
 
-    // Expected format: /scoreboard objectives/players add/remove/set <objective> <player> <value>
-    if(split.length < 4){
+    if(split.length < 3){
 
-        error.innerHTML="Incomplete scoreboard command.";
+        error.innerHTML="/scoreboard [objectives/players] [action] ...\n\nIncomplete command";
         return;
     }
 
@@ -373,12 +405,17 @@ function validateScoreboard(command,error){
     if(subcommand === "objectives"){
 
         if(split.length < 4){
-            error.innerHTML="Incomplete scoreboard objectives command.";
+            error.innerHTML="/scoreboard objectives [add/remove] [name]\n\nIncomplete command: missing objective name";
             return;
         }
 
         let action = split[2]; // add, remove, etc.
         let objectiveName = split[3];
+
+        if(!["add","remove"].includes(action)){
+            error.innerHTML="/scoreboard objectives [add/remove] [name]\n\nInvalid action '" + action + "': expected add or remove";
+            return;
+        }
 
         if(action === "add"){
             scoreboards[objectiveName] = {};
@@ -388,57 +425,54 @@ function validateScoreboard(command,error){
             delete scoreboards[objectiveName];
             error.innerHTML='<span class="success">Objective removed.</span>';
         }
-        else{
-            error.innerHTML="Unknown scoreboard objectives action.";
-            return;
-        }
 
     }
     else if(subcommand === "players"){
 
         if(split.length < 6){
-            error.innerHTML="Incomplete scoreboard players command.";
+            error.innerHTML="/scoreboard players [add/set/remove] [player] [objective] [value]\n\nIncomplete command: expected 5 arguments";
             return;
         }
 
         let action = split[2]; // add, set, remove
-        let objectiveName = split[3];
-        let player = split[4];
+        let player = split[3];
+        let objectiveName = split[4];
         let value = split[5];
 
+        if(!["set","add","remove"].includes(action)){
+            error.innerHTML="/scoreboard players [add/set/remove] [player] [objective] [value]\n\nInvalid action '" + action + "': expected add, set, or remove";
+            return;
+        }
+
         if(!scoreboards[objectiveName]){
-            error.innerHTML="Objective '" + objectiveName + "' does not exist.";
+            error.innerHTML="/scoreboard players [add/set/remove] [player] [objective] [value]\n\nObjective '" + objectiveName + "' does not exist. Create it first with /scoreboard objectives add " + objectiveName;
             return;
         }
 
         if(isNaN(value)){
-            error.innerHTML="Score value must be a number.";
+            error.innerHTML="/scoreboard players [add/set/remove] [player] [objective] [value]\n\nInvalid value: '" + value + "' is not a valid number";
             return;
         }
 
         if(action === "set"){
             scoreboards[objectiveName][player] = parseInt(value);
-            error.innerHTML='<span class="success">Score set.</span>';
+            error.innerHTML='<span class="success">Score set: ' + objectiveName + ' ' + player + ' = ' + value + '</span>';
         }
         else if(action === "add"){
             if(!scoreboards[objectiveName][player]){
                 scoreboards[objectiveName][player] = 0;
             }
             scoreboards[objectiveName][player] += parseInt(value);
-            error.innerHTML='<span class="success">Score added.</span>';
+            error.innerHTML='<span class="success">Score added: ' + objectiveName + ' ' + player + ' += ' + value + '</span>';
         }
         else if(action === "remove"){
             delete scoreboards[objectiveName][player];
-            error.innerHTML='<span class="success">Score removed.</span>';
-        }
-        else{
-            error.innerHTML="Unknown scoreboard players action.";
-            return;
+            error.innerHTML='<span class="success">Score removed: ' + objectiveName + ' ' + player + '</span>';
         }
 
     }
     else{
-        error.innerHTML="Expected 'objectives' or 'players' subcommand.";
+        error.innerHTML="/scoreboard [objectives/players] ...\n\nInvalid subcommand '" + subcommand + "': expected objectives or players";
         return;
     }
 
@@ -458,7 +492,7 @@ function executeTitle(){
 
     if(!command.startsWith("/titleraw ")){
 
-        error.innerHTML="Command must begin with /titleraw";
+        error.innerHTML="/titleraw [selector] [mode] {JSON}\n\nCommand must begin with /titleraw";
         return;
     }
 
@@ -466,7 +500,7 @@ function executeTitle(){
 
     if(firstBrace==-1){
 
-        error.innerHTML="Missing JSON.";
+        error.innerHTML="/titleraw [selector] [mode] {JSON}\n\nMissing JSON object";
         return;
     }
 
@@ -483,7 +517,7 @@ function executeTitle(){
 
     catch(e){
 
-        error.innerHTML="Invalid JSON.";
+        error.innerHTML="/titleraw [selector] [mode] {JSON}\n\nInvalid JSON: " + e.message;
     }
 
 }
@@ -492,39 +526,51 @@ function executeTitle(){
 
 function refreshPreview(){
 
-    let commandError=document.getElementById("commandError").innerText;
+    let commandError=document.getElementById("commandError").innerText.trim();
 
-    let titleError=document.getElementById("titleError").innerText;
+    let titleError=document.getElementById("titleError").innerText.trim();
 
-    if(commandError &&
-       !commandError.includes("valid")){
-
-        document.getElementById("preview").innerText="";
-
+    // Clear preview if there are errors
+    if(commandError && !commandError.includes("valid")){
+        document.getElementById("preview").innerText="(Error in command)";
         return;
     }
 
-    if(titleError &&
-       !titleError.includes("valid")){
-
-        document.getElementById("preview").innerText="";
+    if(titleError && !titleError.includes("valid")){
+        document.getElementById("preview").innerText="(Invalid JSON)";
         return;
     }
 
     let cmd=document.getElementById("titleBox").value.trim();
 
-    let jsonString=cmd.substring(cmd.indexOf("{"));
+    if(!cmd){
+        document.getElementById("preview").innerText="(No title displayed)";
+        return;
+    }
+
+    let firstBrace=cmd.indexOf("{");
+
+    if(firstBrace===-1){
+        document.getElementById("preview").innerText="";
+        return;
+    }
+
+    let jsonString=cmd.substring(firstBrace);
 
     try{
 
         let json=JSON.parse(jsonString);
+
+        if(!json.rawtext || !Array.isArray(json.rawtext)){
+            document.getElementById("preview").innerText="(Invalid: missing rawtext array)";
+            return;
+        }
 
         let output="";
 
         json.rawtext.forEach(entry=>{
 
             if(entry.text){
-
                 output+=entry.text;
             }
 
@@ -562,9 +608,9 @@ function refreshPreview(){
 
     }
 
-    catch{
+    catch(e){
 
-        document.getElementById("preview").innerText="";
+        document.getElementById("preview").innerText="(Error parsing JSON: " + e.message + ")";
     }
 
 }
