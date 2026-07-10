@@ -136,7 +136,7 @@ button:hover{
 <body>
 
 <div class="versionContainer">
-    v<span id="version">1.4</span>
+    v<span id="version">1.5</span>
 </div>
 
 <h1>Bedrock TitleRaw Editor (Concept)</h1>
@@ -203,7 +203,7 @@ Refresh
 
 <script>
 
-const VERSION = "1.4";
+const VERSION = "1.5";
 let variables={};
 let scoreboards={};
 let commandValid = false;
@@ -357,9 +357,11 @@ function validateVariable(command,error){
 
         if(type === "null"){
             if(!variables[varName]){
-                variables[varName] = {};
+                variables[varName] = { __base: null };
             }
-            variables[varName].base = null;
+            else{
+                variables[varName].__base = null;
+            }
             error.innerHTML='<span class="success">Variable created.</span>';
             commandValid = true;
             saveToLocalStorage();
@@ -396,7 +398,7 @@ function validateVariable(command,error){
         if(!variables[varName]){
             variables[varName] = {};
         }
-        variables[varName].base = value;
+        variables[varName].__base = value;
         error.innerHTML='<span class="success">Variable created.</span>';
         commandValid = true;
         saveToLocalStorage();
@@ -421,7 +423,7 @@ function validateVariable(command,error){
             return;
         }
 
-        let baseValue = variables[varName].base;
+        let baseValue = variables[varName].__base;
         let type;
 
         if(baseValue === null){
@@ -462,9 +464,6 @@ function validateVariable(command,error){
             value = loweredValue === "true";
         }
 
-        if(!variables[varName][selector]){
-            variables[varName][selector] = {};
-        }
         variables[varName][selector] = value;
         error.innerHTML='<span class="success">Variable set for ' + selector + '.</span>';
         commandValid = true;
@@ -648,8 +647,8 @@ function getVariableValue(varName, selector){
     }
 
     // Fall back to base value
-    if(variables[varName].base !== undefined){
-        return variables[varName].base;
+    if(variables[varName].__base !== undefined){
+        return variables[varName].__base;
     }
 
     return undefined;
