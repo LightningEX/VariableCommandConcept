@@ -136,7 +136,7 @@ button:hover{
 <body>
 
 <div class="versionContainer">
-    v<span id="version">1.0</span>
+    v<span id="version">1.1</span>
 </div>
 
 <h1>Bedrock TitleRaw Editor (Concept)</h1>
@@ -203,7 +203,7 @@ Refresh
 
 <script>
 
-const VERSION = "1.0";
+const VERSION = "1.1";
 let variables={};
 let scoreboards={};
 
@@ -530,13 +530,13 @@ function refreshPreview(){
 
     let titleError=document.getElementById("titleError").innerText.trim();
 
-    // Clear preview if there are errors
-    if(commandError && !commandError.includes("valid")){
+    // Clear preview if there are errors (not just success messages)
+    if(commandError && !commandError.includes("valid") && commandError.length > 0){
         document.getElementById("preview").innerText="(Error in command)";
         return;
     }
 
-    if(titleError && !titleError.includes("valid")){
+    if(titleError && !titleError.includes("valid") && titleError.length > 0){
         document.getElementById("preview").innerText="(Invalid JSON)";
         return;
     }
@@ -590,14 +590,14 @@ function refreshPreview(){
 
             if(entry.score){
 
-                let objective = entry.score.name;
-                let player = entry.score.player;
+                let objectiveName = entry.score.objective;
+                let playerName = entry.score.name;
 
-                if(!scoreboards[objective] || scoreboards[objective][player] === undefined){
+                if(!scoreboards[objectiveName] || scoreboards[objectiveName][playerName] === undefined){
                     output+="<Undefined>";
                 }
                 else{
-                    output+=scoreboards[objective][player];
+                    output+=scoreboards[objectiveName][playerName];
                 }
 
             }
