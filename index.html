@@ -136,7 +136,7 @@ button:hover{
 <body>
 
 <div class="versionContainer">
-    v<span id="version">1.2</span>
+    v<span id="version">1.3</span>
 </div>
 
 <h1>Bedrock TitleRaw Editor (Concept)</h1>
@@ -203,7 +203,7 @@ Refresh
 
 <script>
 
-const VERSION = "1.2";
+const VERSION = "1.3";
 let variables={};
 let scoreboards={};
 let commandValid = false;
@@ -236,6 +236,10 @@ function saveToLocalStorage(){
     localStorage.setItem("titleBox", document.getElementById("titleBox").value);
     localStorage.setItem("variables", JSON.stringify(variables));
     localStorage.setItem("scoreboards", JSON.stringify(scoreboards));
+    localStorage.setItem("commandValid", commandValid);
+    localStorage.setItem("titleValid", titleValid);
+    localStorage.setItem("commandError", document.getElementById("commandError").innerHTML);
+    localStorage.setItem("titleError", document.getElementById("titleError").innerHTML);
 }
 
 // Load from localStorage
@@ -244,11 +248,19 @@ function loadFromLocalStorage(){
     let savedTitle = localStorage.getItem("titleBox");
     let savedVariables = localStorage.getItem("variables");
     let savedScoreboards = localStorage.getItem("scoreboards");
+    let savedCommandValid = localStorage.getItem("commandValid");
+    let savedTitleValid = localStorage.getItem("titleValid");
+    let savedCommandError = localStorage.getItem("commandError");
+    let savedTitleError = localStorage.getItem("titleError");
     
     if(savedCommand) document.getElementById("commandBox").value = savedCommand;
     if(savedTitle) document.getElementById("titleBox").value = savedTitle;
     if(savedVariables) variables = JSON.parse(savedVariables);
     if(savedScoreboards) scoreboards = JSON.parse(savedScoreboards);
+    if(savedCommandValid) commandValid = savedCommandValid === "true";
+    if(savedTitleValid) titleValid = savedTitleValid === "true";
+    if(savedCommandError) document.getElementById("commandError").innerHTML = savedCommandError;
+    if(savedTitleError) document.getElementById("titleError").innerHTML = savedTitleError;
 }
 
 function clearCommand(){
