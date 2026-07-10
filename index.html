@@ -136,7 +136,7 @@ button:hover{
 <body>
 
 <div class="versionContainer">
-    v<span id="version">1.1</span>
+    v<span id="version">1.2</span>
 </div>
 
 <h1>Bedrock TitleRaw Editor (Concept)</h1>
@@ -203,9 +203,11 @@ Refresh
 
 <script>
 
-const VERSION = "1.1";
+const VERSION = "1.2";
 let variables={};
 let scoreboards={};
+let commandValid = false;
+let titleValid = false;
 
 function autoGrow(box){
 
@@ -255,6 +257,7 @@ function clearCommand(){
     document.getElementById("commandError").innerHTML="";
     variables={};
     scoreboards={};
+    commandValid = false;
     saveToLocalStorage();
 
 }
@@ -263,6 +266,7 @@ function clearTitle(){
 
     document.getElementById("titleBox").value="";
     document.getElementById("titleError").innerHTML="";
+    titleValid = false;
     saveToLocalStorage();
 
 }
@@ -276,6 +280,7 @@ function executeCommand(){
     let error=document.getElementById("commandError");
 
     error.innerHTML="";
+    commandValid = false;
 
     if(input.startsWith("/variable")){
 
@@ -331,6 +336,7 @@ function validateVariable(command,error){
     if(mode === "remove"){
         delete variables[varName];
         error.innerHTML='<span class="success">Variable removed.</span>';
+        commandValid = true;
         saveToLocalStorage();
         return;
     }
@@ -384,6 +390,7 @@ function validateVariable(command,error){
     }
 
     error.innerHTML='<span class="success">Variable ' + mode + "ed.</span>";
+    commandValid = true;
     saveToLocalStorage();
 
 }
@@ -476,6 +483,7 @@ function validateScoreboard(command,error){
         return;
     }
 
+    commandValid = true;
     saveToLocalStorage();
 
 }
@@ -487,6 +495,7 @@ function executeTitle(){
     let error=document.getElementById("titleError");
 
     error.innerHTML="";
+    titleValid = false;
 
     let command=document.getElementById("titleBox").value.trim();
 
@@ -511,6 +520,7 @@ function executeTitle(){
         JSON.parse(json);
 
         error.innerHTML='<span class="success">Command valid.</span>';
+        titleValid = true;
         saveToLocalStorage();
 
     }
@@ -526,17 +536,13 @@ function executeTitle(){
 
 function refreshPreview(){
 
-    let commandError=document.getElementById("commandError").innerText.trim();
-
-    let titleError=document.getElementById("titleError").innerText.trim();
-
-    // Clear preview if there are errors (not just success messages)
-    if(commandError && !commandError.includes("valid") && commandError.length > 0){
+    // Use the validity flags instead of checking error text
+    if(!commandValid){
         document.getElementById("preview").innerText="(Error in command)";
         return;
     }
 
-    if(titleError && !titleError.includes("valid") && titleError.length > 0){
+    if(!titleValid){
         document.getElementById("preview").innerText="(Invalid JSON)";
         return;
     }
